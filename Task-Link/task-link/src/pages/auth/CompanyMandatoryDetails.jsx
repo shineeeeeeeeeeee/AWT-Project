@@ -4,18 +4,27 @@ import logo from "../../assets/logo.svg";
 import "../../pages/auth/CompanyMandatoryDetails.css";
 import InputField from "../../components/Shared/InputField";
 
-export default function CompanyMandatoryDetails() 
-{
+export default function CompanyMandatoryDetails() {
   const { state } = useLocation();
   const ACCOUNT_EMAIL = state?.email || "company@example.com";
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({ companyName: "", companyWebsite: "", companyType: "", location: "", contactPerson: "", contactPhone: "", description: "" });
+
+  const [formData, setFormData] = useState({
+    companyName: "",
+    companyWebsite: "",
+    companyType: "",
+    location: "",
+    contactPerson: "",
+    contactPhone: "",
+    description: "",
+  });
+
   const [companyLogo, setCompanyLogo] = useState(null);
   const [companyDocument, setCompanyDocument] = useState(null);
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    if(state?.companyName) {
+    if (state?.companyName) {
       setFormData((prev) => ({ ...prev, companyName: state.companyName }));
     }
   }, [state]);
@@ -27,75 +36,109 @@ export default function CompanyMandatoryDetails()
 
   const handleLogoChange = (event) => {
     const f = event.target.files && event.target.files[0];
-    if(f && f.type.startsWith("image/")) 
-    {
+    if (f && f.type.startsWith("image/")) {
       setCompanyLogo(f);
       setErrors((prev) => ({ ...prev, companyLogo: "" }));
     } else {
       setCompanyLogo(null);
-      setErrors((prev) => ({ ...prev, companyLogo: "Please upload a valid image (JPG/PNG)." }));
+      setErrors((prev) => ({
+        ...prev,
+        companyLogo: "Please upload a valid image (JPG/PNG).",
+      }));
     }
   };
 
   const handleDocumentChange = (event) => {
     const f = event.target.files && event.target.files[0];
-    if(f && f.type === "application/pdf") 
-    {
+    if (f && f.type === "application/pdf") {
       setCompanyDocument(f);
       setErrors((prev) => ({ ...prev, companyDocument: "" }));
     } else {
       setCompanyDocument(null);
-      setErrors((prev) => ({ ...prev, companyDocument: "Please upload a valid PDF." }));
+      setErrors((prev) => ({
+        ...prev,
+        companyDocument: "Please upload a valid PDF.",
+      }));
     }
   };
 
   const validateForm = () => {
     const newErrors = {};
+    if (!formData.companyName.trim())
+      newErrors.companyName = "Company name is required.";
+    if (!formData.contactPerson.trim())
+      newErrors.contactPerson = "Contact person is required.";
+    if (!formData.companyWebsite.trim())
+      newErrors.companyWebsite = "Company Website is required.";
+    if (!formData.contactPhone.trim())
+      newErrors.contactPhone = "Contact phone is required.";
+    else if (!/^\d{10}$/.test(formData.contactPhone.trim()))
+      newErrors.contactPhone = "Enter a valid 10-digit phone number.";
 
-    if(!formData.companyName.trim()) newErrors.companyName = "Company name is required.";
-    if(!formData.contactPerson.trim()) newErrors.contactPerson = "Contact person is required.";
-    if(!formData.companyWebsite.trim()) newErrors.companyWebsite = "Company Website is required.";
-    if(!formData.contactPhone.trim()) newErrors.contactPhone = "Contact phone is required.";
-    else if(!/^\d{10}$/.test(formData.contactPhone.trim())) newErrors.contactPhone = "Enter a valid 10-digit phone number.";
-
-    if(formData.companyWebsite && formData.companyWebsite.trim()) {
+    if (formData.companyWebsite && formData.companyWebsite.trim()) {
       const urlPattern = /^(https?:\/\/)?([\w-]+\.)+[\w-]{2,}(\/.*)?$/;
-      if(!urlPattern.test(formData.companyWebsite.trim())) newErrors.companyWebsite = "Please enter a valid website URL (e.g. https://example.com).";
+      if (!urlPattern.test(formData.companyWebsite.trim()))
+        newErrors.companyWebsite =
+          "Please enter a valid website URL (e.g. https://example.com).";
     }
 
-    if(!companyLogo) newErrors.companyLogo = "Company logo (image) is required.";
-    if(!companyDocument) newErrors.companyDocument = "Company registration PDF is required.";
+    if (!companyLogo)
+      newErrors.companyLogo = "Company logo (image) is required.";
+    if (!companyDocument)
+      newErrors.companyDocument = "Company registration PDF is required.";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const visualValid = (formData.companyName.trim().length > 0 && formData.contactPerson.trim().length > 0 && /^\d{10}$/.test((formData.contactPhone || "").trim()) && companyLogo !== null && companyDocument !== null);
-
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-
-    if(!validateForm()) 
-    {
+  
+    if (!validateForm()) {
       const firstErrorField = document.querySelector(".error-msg");
-      if (firstErrorField) firstErrorField.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (firstErrorField)
+        firstErrorField.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
-
-    const payload = {
-      companyDetails: { ...formData },
-      logoFileName: companyLogo ? companyLogo.name : null,
-      docFileName: companyDocument ? companyDocument.name : null,
-      contactEmail: ACCOUNT_EMAIL,
-    };
-
-    console.log(payload);
-    navigate("/login");
+  
+    const formDataToSend = new FormData();
+    formDataToSend.append("email", ACCOUNT_EMAIL);
+    formDataToSend.append("companyName", formData.companyName);
+    formDataToSend.append("companyWebsite", formData.companyWebsite);
+    formDataToSend.append("companyType", formData.companyType);
+    formDataToSend.append("location", formData.location);
+    formDataToSend.append("contactPerson", formData.contactPerson);
+    formDataToSend.append("contactPhone", formData.contactPhone);
+    formDataToSend.append("description", formData.description);
+  
+    if (companyLogo) formDataToSend.append("companyLogo", companyLogo);
+    if (companyDocument) formDataToSend.append("companyDocument", companyDocument);
+  
+    try {
+      const response = await fetch("http://localhost:5001/api/auth/details/company", {
+        method: "POST",
+        body: formDataToSend,
+      });
+  
+      const data = await response.json();
+      if (response.ok) {
+        console.log("Company details saved:", data);
+        alert("Company details saved successfully!");
+        navigate("/login");
+      } else {
+        console.error("Error saving company details:", data);
+        alert(data.message || "Error saving details.");
+      }
+    } catch (error) {
+      console.error("Network error:", error);
+      alert("Failed to connect to the server.");
+    }
   };
+  
 
   return (
     <div className="cmp-page">
-{/* ---------------------------------------------------------------------------------------------------------------------------------- */}
+      {/* ---------------------------------------------------------------------------------------------------------------------------------- */}
       <div className="cmp-hero" aria-hidden="true">
         <img src={logo} alt="Internship Portal Logo" className="cmp-hero-img" />
       </div>
@@ -116,7 +159,7 @@ export default function CompanyMandatoryDetails()
         </div>
 
         <form className="cmp-card form-card" onSubmit={handleSubmit} noValidate>
-{/* ----------------------------------------------------------COMPANY INFO----------------------------------------------------------- */}
+          {/* ----------------------------------------------------------COMPANY INFO----------------------------------------------------------- */}
           <div className="cmp-card-header">
             <h3>Company Details</h3>
           </div>
@@ -128,7 +171,9 @@ export default function CompanyMandatoryDetails()
               onChange={(val) => handleInputChange("companyName", val)}
               placeholder="Enter company name"
             />
-            {errors.companyName && <div className="error-msg">&#9888; {errors.companyName}</div>}
+            {errors.companyName && (
+              <div className="error-msg">&#9888; {errors.companyName}</div>
+            )}
 
             <InputField
               label="Company website"
@@ -136,7 +181,9 @@ export default function CompanyMandatoryDetails()
               onChange={(val) => handleInputChange("companyWebsite", val)}
               placeholder="https://example.com"
             />
-            {errors.companyWebsite && <div className="error-msg">&#9888; {errors.companyWebsite}</div>}
+            {errors.companyWebsite && (
+              <div className="error-msg">&#9888; {errors.companyWebsite}</div>
+            )}
 
             <InputField
               label="Company type / Industry"
@@ -153,7 +200,7 @@ export default function CompanyMandatoryDetails()
             />
           </div>
 
-{/* -------------------------------------------------------------CONTACT----------------------------------------------------------- */}
+          {/* -------------------------------------------------------------CONTACT----------------------------------------------------------- */}
           <div className="cmp-card-divider" />
           <div className="cmp-card-header">
             <h3>Contact Person</h3>
@@ -166,7 +213,9 @@ export default function CompanyMandatoryDetails()
               onChange={(val) => handleInputChange("contactPerson", val)}
               placeholder="Recruiter or HR Name"
             />
-            {errors.contactPerson && <div className="error-msg">&#9888; {errors.contactPerson}</div>}
+            {errors.contactPerson && (
+              <div className="error-msg">&#9888; {errors.contactPerson}</div>
+            )}
 
             <InputField
               label="Phone number"
@@ -175,10 +224,12 @@ export default function CompanyMandatoryDetails()
               placeholder="Enter contact number"
               type="tel"
             />
-            {errors.contactPhone && <div className="error-msg">&#9888; {errors.contactPhone}</div>}
+            {errors.contactPhone && (
+              <div className="error-msg">&#9888; {errors.contactPhone}</div>
+            )}
           </div>
 
-{/* ------------------------------------------------------------ABOUT------------------------------------------------------------- */}
+          {/* ------------------------------------------------------------ABOUT------------------------------------------------------------- */}
           <div className="cmp-card-divider" />
           <div className="cmp-card-header">
             <h3>About Company</h3>
@@ -193,7 +244,7 @@ export default function CompanyMandatoryDetails()
             />
           </div>
 
-{/* ----------------------------------------------------------UPLOADS----------------------------------------------------------- */}
+          {/* ----------------------------------------------------------UPLOADS----------------------------------------------------------- */}
           <div className="cmp-card-divider" />
           <div className="cmp-card-header">
             <h3>Uploads</h3>
@@ -213,7 +264,9 @@ export default function CompanyMandatoryDetails()
                 {companyLogo ? companyLogo.name : <span className="muted">No file selected</span>}
               </div>
             </div>
-            {errors.companyLogo && <div className="error-msg">&#9888; {errors.companyLogo}</div>}
+            {errors.companyLogo && (
+              <div className="error-msg">&#9888; {errors.companyLogo}</div>
+            )}
           </div>
 
           <div className="upload-box">
@@ -230,18 +283,19 @@ export default function CompanyMandatoryDetails()
                 {companyDocument ? companyDocument.name : <span className="muted">No file selected</span>}
               </div>
             </div>
-            {errors.companyDocument && <div className="error-msg">&#9888; {errors.companyDocument}</div>}
+            {errors.companyDocument && (
+              <div className="error-msg">&#9888; {errors.companyDocument}</div>
+            )}
           </div>
 
-{/* ----------------------------------------------------------SUBMIT----------------------------------------------------------- */}
+          {/* ----------------------------------------------------------SUBMIT----------------------------------------------------------- */}
           <div className="cmp-card-divider" />
           <div className="cmp-actions">
-            <button type="submit" className={`primary-btn active`} > Submit </button>
-            <button type="button" className="secondary-btn" onClick={() => navigate("/login")}> Cancel </button>
+            <button type="submit" className="primary-btn active">Submit</button>
+            <button type="button" className="secondary-btn" onClick={() => navigate("/login")}>Cancel</button>
           </div>
         </form>
       </main>
-{/* --------------------------------------------------------------------------------------------------------------------------- */}
     </div>
   );
 }

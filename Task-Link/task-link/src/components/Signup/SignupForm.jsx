@@ -1,17 +1,22 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Button from "../Shared/Button";
+import axios from "axios";
 
-function SignupForm() 
-{
-  const [formData, setFormData] = useState({ fullname: "", email: "", password: "", retypedPassword: "" });
+function SignupForm() {
+  const [formData, setFormData] = useState({
+    fullname: "",
+    email: "",
+    password: "",
+    retypedPassword: "",
+  });
   const [errors, setErrors] = useState({});
   const [showPwd, setShowPwd] = useState(false);
   const [showRetyped, setShowRetyped] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (event) => {
-    setFormData({...formData, [event.target.name] : event.target.value});
+    setFormData({ ...formData, [event.target.name]: event.target.value });
     setErrors((prev) => ({ ...prev, [event.target.name]: undefined }));
   };
 
@@ -20,30 +25,21 @@ function SignupForm()
 
     if (!formData.fullname.trim()) newErrors.fullname = "Full name is required.";
 
-    if (!formData.email.trim())
-    {
+    if (!formData.email.trim()) {
       newErrors.email = "Email is required.";
-    }
-    else if(!/\S+@\S+\.\S+/.test(formData.email)) 
-    {
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = "Invalid email format.";
     }
 
-    if (!formData.password) 
-    {
+    if (!formData.password) {
       newErrors.password = "Password is required.";
-    }
-    else if(formData.password.length < 6)
-    {
+    } else if (formData.password.length < 6) {
       newErrors.password = "Password must be at least 6 characters.";
     }
 
-    if (!formData.retypedPassword)
-    {
+    if (!formData.retypedPassword) {
       newErrors.retypedPassword = "Please confirm your password.";
-    } 
-    else if(formData.password !== formData.retypedPassword)
-    {
+    } else if (formData.password !== formData.retypedPassword) {
       newErrors.retypedPassword = "Passwords do not match.";
     }
 
@@ -51,24 +47,41 @@ function SignupForm()
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if(validate()) 
-    {
-      const staticUserData = { fullName: formData.fullname, email: formData.email, password: formData.password };
-    
-      setFormData({ fullname: "", email: "", password: "", retypedPassword: "" });
-      setShowPwd(false);
-      setShowRetyped(false);
-    
-      navigate("/role", { state: { formData: staticUserData } });
+    if (validate()) {
+      const userData = {
+        fullName: formData.fullname,
+        email: formData.email,
+        password: formData.password,
+      };
+
+      try {
+        // Send signup data to backend
+        await axios.post("http://localhost:5001/api/auth/signup", userData);
+
+        // Clear form and states
+        setFormData({ fullname: "", email: "", password: "", retypedPassword: "" });
+        setShowPwd(false);
+        setShowRetyped(false);
+
+        // Navigate to role page with data
+        navigate("/role", { state: { formData: userData } });
+      } catch (err) {
+        console.error("Signup error:", err.response?.data || err.message);
+
+        // Optional: handle backend error messages
+        if (err.response?.data?.message) {
+          alert(err.response.data.message);
+        }
+      }
     }
   };
 
   return (
     <form className="signup-form" noValidate onSubmit={handleSubmit}>
-{/* -----------------------------------------------------------------FULL NAME---------------------------------------------------------- */}
+      {/* -----------------------------------------------------------------FULL NAME---------------------------------------------------------- */}
       <div className="input-group">
         <div className="field filled">
           <input
@@ -90,7 +103,7 @@ function SignupForm()
         )}
       </div>
 
-{/* -----------------------------------------------------------------EMAIL---------------------------------------------------------- */}
+      {/* -----------------------------------------------------------------EMAIL---------------------------------------------------------- */}
       <div className="input-group">
         <div className="field filled">
           <input
@@ -112,7 +125,7 @@ function SignupForm()
         )}
       </div>
 
-{/* --------------------------------------------------------------PASSWORD-------------------------------------------------------- */}
+      {/* --------------------------------------------------------------PASSWORD-------------------------------------------------------- */}
       <div className="input-group">
         <div className="field filled" style={{ position: "relative" }}>
           <input
@@ -146,7 +159,7 @@ function SignupForm()
         )}
       </div>
 
-{/* ----------------------------------------------------------CONFIRM PASSWORD---------------------------------------------------- */}
+      {/* ----------------------------------------------------------CONFIRM PASSWORD---------------------------------------------------- */}
       <div className="input-group">
         <div className="field filled" style={{ position: "relative" }}>
           <input
@@ -179,14 +192,18 @@ function SignupForm()
         )}
       </div>
 
-{/* --------------------------------------------------------------SUBMIT-------------------------------------------------------- */}
+      {/* --------------------------------------------------------------SUBMIT-------------------------------------------------------- */}
       <div className="form-actions">
         <Button type="submit" text="Sign Up" />
       </div>
 
-{/* --------------------------------------------------------------PASSWORD------------------------------------------------------ */}
-      <p className="redirect-text"> Already have an account?{" "} <Link to="/login" className="redirect-link"> Login </Link> </p>
-{/* ---------------------------------------------------------------------------------------------------------------------------- */}
+      {/* --------------------------------------------------------------LOGIN LINK------------------------------------------------------ */}
+      <p className="redirect-text">
+        Already have an account?{" "}
+        <Link to="/login" className="redirect-link">
+          Login
+        </Link>
+      </p>
     </form>
   );
 }

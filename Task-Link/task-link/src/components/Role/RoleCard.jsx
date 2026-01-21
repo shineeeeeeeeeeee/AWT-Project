@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import logo from "../../assets/logo.svg";
+import axios from "axios";
+
 
 function RoleCard() 
 {
@@ -11,23 +13,33 @@ function RoleCard()
 
   function selectRole(r) { setRole(r); }
 
-  function onContinue() 
-  {
-    if(!role) return;
+  async function onContinue() {
+    if (!role) return;
     const updatedData = { ...signupData, role };
-    console.log(updatedData);
-
-    if(role === "student") 
-    {
-      navigate("/fill_student_details", 
-        { state: { fullName: signupData?.fullName || "", email: signupData?.email || "" } });
+    console.log("Selected Role:", updatedData);
+  
+    try {
+      // Send role update to backend
+      await axios.post("http://localhost:5001/api/auth/role", {
+        email: signupData.email,
+        role: role,
+      });
+  
+      // Navigate after role is saved in backend
+      if (role === "student") {
+        navigate("/fill_student_details", {
+          state: { fullName: signupData?.fullName || "", email: signupData?.email || "" },
+        });
+      } else if (role === "recruiter") {
+        navigate("/fill_company_details", {
+          state: { email: signupData?.email || "" },
+        });
+      }
+    } catch (error) {
+      console.error("Error saving role:", error.response?.data || error.message);
+      alert("Failed to save role. Please try again.");
     }
-    else if(role === "recruiter") 
-    {
-      navigate("/fill_company_details", 
-        { state: { email: signupData?.email || "" } });
-    }
-}
+  }  
 
   const buttonText = (role === "student" ? "Apply as a Student" : (role === "recruiter" ? "Apply as a Recruiter" : "Create Account"));
   const buttonDisabled = role === "";
